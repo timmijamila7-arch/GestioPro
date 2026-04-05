@@ -11,12 +11,11 @@ use Illuminate\Support\Facades\Storage;
 
 class AbsenceController extends Controller
 {
-    // 📋 LISTER les absences
     public function index()
     {
         $user = Auth::user();
 
-        if ($user->role === 'admin' || $user->role === 'rh') {
+        if ($user->role === 'admin') {
             $absences = Absence::with('employee')
                                ->orderBy('date_absence', 'desc')
                                ->get();
@@ -33,7 +32,6 @@ class AbsenceController extends Controller
         ], 200);
     }
 
-    // 💾 AJOUTER une absence
     public function store(Request $request)
     {
         $request->validate([
@@ -63,7 +61,6 @@ class AbsenceController extends Controller
         ], 201);
     }
 
-    // 👁️ AFFICHER une absence
     public function show(string $id)
     {
         $absence = Absence::with('employee')->find($id);
@@ -83,7 +80,6 @@ class AbsenceController extends Controller
         ], 200);
     }
 
-    // 🔄 MODIFIER une absence
     public function update(Request $request, string $id)
     {
         $absence = Absence::find($id);
@@ -126,10 +122,9 @@ class AbsenceController extends Controller
         ], 200);
     }
 
-    // 🗑️ SUPPRIMER une absence
     public function destroy(string $id)
     {
-        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+        if (Auth::user()->role !== 'admin' ) {
             return response()->json([
                 'success' => false,
                 'message' => 'Action non autorisée.'
@@ -162,7 +157,7 @@ class AbsenceController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role === 'admin' || $user->role === 'rh') {
+        if ($user->role === 'admin' ) {
             return;
         }
 

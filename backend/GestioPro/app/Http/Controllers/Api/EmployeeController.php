@@ -9,10 +9,9 @@ use Illuminate\Support\Facades\Auth;
 
 class EmployeeController extends Controller
 {
-    // 📋 LISTER les employés
     public function index()
     {
-        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+        if (Auth::user()->role !== 'admin') {
             return response()->json([
                 'success' => false,
                 'message' => 'Action non autorisée.'
@@ -32,7 +31,7 @@ class EmployeeController extends Controller
     // 💾 AJOUTER un employé
     public function store(Request $request)
     {
-        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+        if (Auth::user()->role !== 'admin') {
             return response()->json([
                 'success' => false,
                 'message' => 'Action non autorisée.'
@@ -63,7 +62,6 @@ class EmployeeController extends Controller
         ], 201);
     }
 
-    // 👁️ AFFICHER un employé
     public function show(string $id)
     {
         $user = Auth::user();
@@ -76,8 +74,7 @@ class EmployeeController extends Controller
             ], 404);
         }
 
-        // Un employé ne peut voir que son propre profil
-        if ($user->role !== 'admin' && $user->role !== 'rh' && $user->employee_id !== $employee->id) {
+        if ($user->role !== 'admin'&& $user->employee_id !== $employee->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Accès non autorisé.'
@@ -90,10 +87,9 @@ class EmployeeController extends Controller
         ], 200);
     }
 
-    // 🔄 MODIFIER un employé
     public function update(Request $request, string $id)
     {
-        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+        if (Auth::user()->role !== 'admin') {
             return response()->json([
                 'success' => false,
                 'message' => 'Action non autorisée.'
@@ -133,7 +129,6 @@ class EmployeeController extends Controller
         ], 200);
     }
 
-    // 🗑️ SUPPRIMER un employé
     public function destroy(string $id)
     {
         if (Auth::user()->role !== 'admin') {

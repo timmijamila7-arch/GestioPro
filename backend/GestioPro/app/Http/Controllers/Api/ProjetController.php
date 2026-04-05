@@ -24,7 +24,7 @@ class ProjetController extends Controller
 
     public function store(Request $request)
     {
-        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+        if (Auth::user()->role !== 'admin') {
             return response()->json([
                 'success' => false,
                 'message' => 'Action non autorisée.'
@@ -68,7 +68,7 @@ class ProjetController extends Controller
 
     public function update(Request $request, string $id)
     {
-        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+        if (Auth::user()->role !== 'admin') {
             return response()->json([
                 'success' => false,
                 'message' => 'Action non autorisée.'

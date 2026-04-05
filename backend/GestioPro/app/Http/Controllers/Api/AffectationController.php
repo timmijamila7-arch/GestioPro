@@ -9,12 +9,11 @@ use Illuminate\Support\Facades\Auth;
 
 class AffectationController extends Controller
 {
-    // 📋 LISTER les affectations
     public function index()
     {
         $user = Auth::user();
 
-        if ($user->role === 'admin' || $user->role === 'rh') {
+        if ($user->role === 'admin') {
             $affectations = Affectation::with(['employee', 'projet'])
                                        ->orderBy('date_debut', 'desc')
                                        ->get();
@@ -31,10 +30,9 @@ class AffectationController extends Controller
         ], 200);
     }
 
-    // 💾 AJOUTER une affectation
     public function store(Request $request)
     {
-        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+        if (Auth::user()->role !== 'admin') {
             return response()->json([
                 'success' => false,
                 'message' => 'Action non autorisée.'
@@ -58,7 +56,6 @@ class AffectationController extends Controller
         ], 201);
     }
 
-    // 👁️ AFFICHER une affectation
     public function show(string $id)
     {
         $affectation = Affectation::with(['employee', 'projet'])->find($id);
@@ -78,10 +75,9 @@ class AffectationController extends Controller
         ], 200);
     }
 
-    // 🔄 MODIFIER une affectation
     public function update(Request $request, string $id)
     {
-        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+        if (Auth::user()->role !== 'admin') {
             return response()->json([
                 'success' => false,
                 'message' => 'Action non autorisée.'
@@ -114,10 +110,9 @@ class AffectationController extends Controller
         ], 200);
     }
 
-    // 🗑️ SUPPRIMER une affectation
     public function destroy(string $id)
     {
-        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+        if (Auth::user()->role !== 'admin') {
             return response()->json([
                 'success' => false,
                 'message' => 'Action non autorisée.'
@@ -141,12 +136,11 @@ class AffectationController extends Controller
         ], 200);
     }
 
-    // 🔒 Vérifier les droits d'accès
     private function autoriser(Affectation $affectation)
     {
         $user = Auth::user();
 
-        if ($user->role === 'admin' || $user->role === 'rh') {
+        if ($user->role === 'admin' ) {
             return;
         }
 

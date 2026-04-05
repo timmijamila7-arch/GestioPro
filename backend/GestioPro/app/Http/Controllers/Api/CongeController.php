@@ -9,12 +9,11 @@ use Illuminate\Support\Facades\Auth;
 
 class CongeController extends Controller
 {
-    // 📋 LISTER les congés
     public function index()
     {
         $user = Auth::user();
 
-        if ($user->role === 'admin' || $user->role === 'rh') {
+        if ($user->role === 'admin' ) {
             $conges = Conge::with('employee')
                            ->orderBy('date_debut', 'desc')
                            ->get();
@@ -31,7 +30,6 @@ class CongeController extends Controller
         ], 200);
     }
 
-    // 💾 AJOUTER un congé
     public function store(Request $request)
     {
         $request->validate([
@@ -56,7 +54,6 @@ class CongeController extends Controller
         ], 201);
     }
 
-    // 👁️ AFFICHER un congé
     public function show(string $id)
     {
         $conge = Conge::with('employee')->find($id);
@@ -76,7 +73,6 @@ class CongeController extends Controller
         ], 200);
     }
 
-    // 🔄 MODIFIER un congé
     public function update(Request $request, string $id)
     {
         $conge = Conge::find($id);
@@ -108,10 +104,9 @@ class CongeController extends Controller
         ], 200);
     }
 
-    // ✅ APPROUVER / REFUSER un congé (admin et RH seulement)
     public function valider(Request $request, string $id)
     {
-        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+        if (Auth::user()->role !== 'admin') {
             return response()->json([
                 'success' => false,
                 'message' => 'Action non autorisée.'
@@ -145,10 +140,9 @@ class CongeController extends Controller
         ], 200);
     }
 
-    // 🗑️ SUPPRIMER un congé
     public function destroy(string $id)
     {
-        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+        if (Auth::user()->role !== 'admin') {
             return response()->json([
                 'success' => false,
                 'message' => 'Action non autorisée.'
@@ -172,7 +166,6 @@ class CongeController extends Controller
         ], 200);
     }
 
-    // 🔒 Vérifier les droits d'accès
     private function autoriser(Conge $conge)
     {
         $user = Auth::user();
