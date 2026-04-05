@@ -13,8 +13,22 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 
-
-
+Route::middleware('auth:sanctum')->group(function () {
+    Route::resource('projets', ProjetController::class);
+});
+Route::middleware('auth:sanctum')->group(function () {
+    Route::resource('employees', EmployeeController::class);
+});
+Route::middleware('auth:sanctum')->group(function () {
+    Route::resource('conges', CongeController::class);
+    Route::patch('conges/{id}/valider', [CongeController::class, 'valider']);
+});
+Route::middleware('auth:sanctum')->group(function () {
+    Route::resource('affectations', AffectationController::class);
+});
+Route::middleware('auth:sanctum')->group(function () {
+    Route::resource('absences', AbsenceController::class);
+});
 Route::prefix('auth')->group(function () {
     // Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login',    [AuthController::class, 'login']);

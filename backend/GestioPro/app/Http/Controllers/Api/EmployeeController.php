@@ -4,23 +4,43 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
-use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 class EmployeeController extends Controller
 {
+    // 📋 LISTER les employés
     public function index()
     {
-        return response()->json(Employee::with('user')->get());
+        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Action non autorisée.'
+            ], 403);
+        }
+
+        $employees = Employee::with('user')
+                             ->orderBy('nom')
+                             ->get();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $employees
+        ], 200);
     }
 
+    // 💾 AJOUTER un employé
     public function store(Request $request)
     {
+        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Action non autorisée.'
+            ], 403);
+        }
+
         $request->validate([
-            'name'           => 'required|string|max:255',
-            'email'          => 'required|email|unique:users,email',
-            'password'       => 'required|string|min:8',
+            'user_id'        => 'nullable|exists:users,id',
             'matricule'      => 'required|string|unique:employees,matricule',
             'nom'            => 'required|string|max:255',
             'prenom'         => 'required|string|max:255',
@@ -30,79 +50,113 @@ class EmployeeController extends Controller
             'poste'          => 'required|string|max:255',
             'departement'    => 'required|string|max:255',
             'telephone'      => 'nullable|string|max:20',
-            'adresse'        => 'nullable|string|max:500',
-            'statut'         => 'sometimes|in:actif,inactif',
+            'adresse'        => 'nullable|string',
+            'statut'         => 'required|in:actif,inactif,conge',
         ]);
 
-        $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'password' => Hash::make($request->password),
-            'role'     => 'employe',
-        ]);
-
-        $employee = Employee::create([
-            'user_id'        => $user->id,
-            'matricule'      => $request->matricule,
-            'nom'            => $request->nom,
-            'prenom'         => $request->prenom,
-            'cin'            => $request->cin,
-            'date_naissance' => $request->date_naissance,
-            'date_embauche'  => $request->date_embauche,
-            'poste'          => $request->poste,
-            'departement'    => $request->departement,
-            'telephone'      => $request->telephone,
-            'adresse'        => $request->adresse,
-            'statut'         => $request->statut ?? 'actif',
-        ]);
+        $employee = Employee::create($request->all());
 
         return response()->json([
-            'message'  => 'Employé créé avec succès',
-            'employee' => $employee->load('user'),
+            'success' => true,
+            'message' => 'Employé créé avec succès.',
+            'data'    => $employee
         ], 201);
     }
 
-    public function show(Employee $employee)
+    // 👁️ AFFICHER un employé
+    public function show(string $id)
     {
-        return response()->json(
-            $employee->load(['user', 'affectations.projet', 'conges', 'absences'])
-        );
+        $user = Auth::user();
+        $employee = Employee::with(['user', 'absences', 'conges', 'affectations'])->find($id);
+
+        if (!$employee) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employé non trouvé.'
+            ], 404);
+        }
+
+        // Un employé ne peut voir que son propre profil
+        if ($user->role !== 'admin' && $user->role !== 'rh' && $user->employee_id !== $employee->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Accès non autorisé.'
+            ], 403);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data'    => $employee
+        ], 200);
     }
 
-    public function update(Request $request, Employee $employee)
+    // 🔄 MODIFIER un employé
+    public function update(Request $request, string $id)
     {
+        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Action non autorisée.'
+            ], 403);
+        }
+
+        $employee = Employee::find($id);
+
+        if (!$employee) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employé non trouvé.'
+            ], 404);
+        }
+
         $request->validate([
-            'matricule'      => 'sometimes|string|unique:employees,matricule,' . $employee->id,
-            'nom'            => 'sometimes|string|max:255',
-            'prenom'         => 'sometimes|string|max:255',
-            'cin'            => 'sometimes|string|unique:employees,cin,' . $employee->id,
-            'date_naissance' => 'sometimes|date',
-            'date_embauche'  => 'sometimes|date',
-            'poste'          => 'sometimes|string|max:255',
-            'departement'    => 'sometimes|string|max:255',
+            'user_id'        => 'nullable|exists:users,id',
+            'matricule'      => 'required|string|unique:employees,matricule,' . $id,
+            'nom'            => 'required|string|max:255',
+            'prenom'         => 'required|string|max:255',
+            'cin'            => 'required|string|unique:employees,cin,' . $id,
+            'date_naissance' => 'required|date',
+            'date_embauche'  => 'required|date',
+            'poste'          => 'required|string|max:255',
+            'departement'    => 'required|string|max:255',
             'telephone'      => 'nullable|string|max:20',
-            'adresse'        => 'nullable|string|max:500',
-            'statut'         => 'sometimes|in:actif,inactif',
+            'adresse'        => 'nullable|string',
+            'statut'         => 'required|in:actif,inactif,conge',
         ]);
 
-        $employee->update($request->only([
-            'matricule', 'nom', 'prenom', 'cin',
-            'date_naissance', 'date_embauche', 'poste',
-            'departement', 'telephone', 'adresse', 'statut',
-        ]));
+        $employee->update($request->all());
 
         return response()->json([
-            'message'  => 'Employé mis à jour',
-            'employee' => $employee->load('user'),
-        ]);
+            'success' => true,
+            'message' => 'Employé modifié avec succès.',
+            'data'    => $employee
+        ], 200);
     }
 
-    public function destroy(Employee $employee)
+    // 🗑️ SUPPRIMER un employé
+    public function destroy(string $id)
     {
-        $employee->update(['statut' => 'inactif']);
+        if (Auth::user()->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Action non autorisée.'
+            ], 403);
+        }
+
+        $employee = Employee::find($id);
+
+        if (!$employee) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employé non trouvé.'
+            ], 404);
+        }
+
+        $employee->delete();
 
         return response()->json([
-            'message' => 'Employé désactivé avec succès',
-        ]);
+            'success' => true,
+            'message' => 'Employé supprimé avec succès.'
+        ], 200);
     }
 }

@@ -3,47 +3,189 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Conge;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class CongeController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    // 📋 LISTER les congés
     public function index()
     {
-        //
+        $user = Auth::user();
+
+        if ($user->role === 'admin' || $user->role === 'rh') {
+            $conges = Conge::with('employee')
+                           ->orderBy('date_debut', 'desc')
+                           ->get();
+        } else {
+            $conges = Conge::with('employee')
+                           ->where('employee_id', $user->employee_id)
+                           ->orderBy('date_debut', 'desc')
+                           ->get();
+        }
+
+        return response()->json([
+            'success' => true,
+            'data'    => $conges
+        ], 200);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    // 💾 AJOUTER un congé
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+            'type_conge'  => 'required|string|max:255',
+            'date_debut'  => 'required|date',
+            'date_fin'    => 'required|date|after_or_equal:date_debut',
+            'motif'       => 'nullable|string|max:255',
+            'statut'      => 'in:en_attente,approuve,refuse',
+            'commentaire' => 'nullable|string',
+        ]);
+
+        $data = $request->all();
+        $data['statut'] = $data['statut'] ?? 'en_attente';
+
+        $conge = Conge::create($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Congé créé avec succès.',
+            'data'    => $conge->load('employee')
+        ], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
+    // 👁️ AFFICHER un congé
     public function show(string $id)
     {
-        //
+        $conge = Conge::with('employee')->find($id);
+
+        if (!$conge) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Congé non trouvé.'
+            ], 404);
+        }
+
+        $this->autoriser($conge);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $conge
+        ], 200);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
+    // 🔄 MODIFIER un congé
     public function update(Request $request, string $id)
     {
-        //
+        $conge = Conge::find($id);
+
+        if (!$conge) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Congé non trouvé.'
+            ], 404);
+        }
+
+        $this->autoriser($conge);
+
+        $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+            'type_conge'  => 'required|string|max:255',
+            'date_debut'  => 'required|date',
+            'date_fin'    => 'required|date|after_or_equal:date_debut',
+            'motif'       => 'nullable|string|max:255',
+            'commentaire' => 'nullable|string',
+        ]);
+
+        $conge->update($request->all());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Congé modifié avec succès.',
+            'data'    => $conge->load('employee')
+        ], 200);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+    // ✅ APPROUVER / REFUSER un congé (admin et RH seulement)
+    public function valider(Request $request, string $id)
+    {
+        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Action non autorisée.'
+            ], 403);
+        }
+
+        $conge = Conge::find($id);
+
+        if (!$conge) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Congé non trouvé.'
+            ], 404);
+        }
+
+        $request->validate([
+            'statut'      => 'required|in:approuve,refuse',
+            'commentaire' => 'nullable|string',
+        ]);
+
+        $conge->update([
+            'statut'        => $request->statut,
+            'validateur_id' => Auth::id(),
+            'commentaire'   => $request->commentaire,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Congé ' . $request->statut . ' avec succès.',
+            'data'    => $conge->load('employee')
+        ], 200);
+    }
+
+    // 🗑️ SUPPRIMER un congé
     public function destroy(string $id)
     {
-        //
+        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'rh') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Action non autorisée.'
+            ], 403);
+        }
+
+        $conge = Conge::find($id);
+
+        if (!$conge) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Congé non trouvé.'
+            ], 404);
+        }
+
+        $conge->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Congé supprimé avec succès.'
+        ], 200);
+    }
+
+    // 🔒 Vérifier les droits d'accès
+    private function autoriser(Conge $conge)
+    {
+        $user = Auth::user();
+
+        if ($user->role === 'admin' || $user->role === 'rh') {
+            return;
+        }
+
+        if ($conge->employee_id !== $user->employee_id) {
+            abort(response()->json([
+                'success' => false,
+                'message' => 'Accès non autorisé.'
+            ], 403));
+        }
     }
 }
