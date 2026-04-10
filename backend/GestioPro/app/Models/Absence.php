@@ -23,7 +23,6 @@ class Absence extends Model
         'justifiee'    => 'boolean',
     ];
 
-    // Relations
     public function employee()
     {
         return $this->belongsTo(Employee::class);

@@ -25,7 +25,7 @@ class Conge extends Model
         'date_fin'   => 'date',
     ];
 
-    // Relations
+    
     public function employee()
     {
         return $this->belongsTo(Employee::class);
@@ -36,7 +36,6 @@ class Conge extends Model
         return $this->belongsTo(User::class, 'validateur_id');
     }
 
-    // Helpers
     public function getDuree(): int
     {
         return $this->date_debut->diffInDays($this->date_fin) + 1;

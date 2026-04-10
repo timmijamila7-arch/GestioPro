@@ -12,9 +12,18 @@ class ProjetController extends Controller
 
     public function index()
     {
-        $projets = Projet::with('affectations.employee')
-                         ->orderBy('date_debut', 'desc')
-                         ->get();
+        $user = Auth::user();
+
+        $query = Projet::with('affectations.employee')
+            ->orderBy('date_debut', 'desc');
+
+        if ($user->role !== 'admin') {
+            $query->whereHas('affectations', function ($subQuery) use ($user) {
+                $subQuery->where('employee_id', $user->employee_id);
+            });
+        }
+
+        $projets = $query->get();
 
         return response()->json([
             'success' => true,
@@ -36,7 +45,7 @@ class ProjetController extends Controller
             'description' => 'nullable|string',
             'date_debut'  => 'required|date',
             'date_fin'    => 'nullable|date|after_or_equal:date_debut',
-            'statut'      => 'required|in:en_cours,termine,suspendu,planifie',
+            'statut'      => 'required|in:en_cours,termine,suspendu',
             'budget'      => 'nullable|numeric|min:0',
         ]);
 
@@ -58,6 +67,13 @@ class ProjetController extends Controller
                 'success' => false,
                 'message' => 'Projet non trouvé.'
             ], 404);
+        }
+
+        if (Auth::user()->role !== 'admin' && !$projet->affectations->contains('employee_id', Auth::user()->employee_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'AccÃ¨s non autorisÃ©.'
+            ], 403);
         }
 
         return response()->json([
@@ -89,7 +105,7 @@ class ProjetController extends Controller
             'description' => 'nullable|string',
             'date_debut'  => 'required|date',
             'date_fin'    => 'nullable|date|after_or_equal:date_debut',
-            'statut'      => 'required|in:en_cours,termine,suspendu,planifie',
+            'statut' => 'required|in:en_cours,termine,suspendu',
             'budget'      => 'nullable|numeric|min:0',
         ]);
 

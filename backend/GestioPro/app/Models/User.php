@@ -30,10 +30,12 @@ class User extends Authenticatable
         ];
     }
 
-    // Relations
+    // ✅ FIX: Relation hasOne — User -> Employee (via user_id f employees table)
+    // Avant: relation kanet mktuba sah, walakin $user->employee_id ma kaynach
+    // f users table — donc khas dima nkhdmu $user->employee->id
     public function employee()
     {
-        return $this->hasOne(Employee::class);
+        return $this->hasOne(Employee::class, 'user_id');
     }
 
     public function congesValides()
@@ -46,14 +48,10 @@ class User extends Authenticatable
         return $this->hasMany(Absence::class, 'enregistre_par');
     }
 
-    // Helpers
-    public function isAdmin(): bool
+    // ✅ Helper accessor: $user->employee_id -> ykhrej id dyal employee dyalo
+    // Khdda bhal property pour simplifier le code dans les controllers
+    public function getEmployeeIdAttribute(): ?int
     {
-        return $this->role === 'admin';
-    }
-
-    public function isEmploye(): bool
-    {
-        return $this->role === 'employe';
+        return $this->employee?->id;
     }
 }
