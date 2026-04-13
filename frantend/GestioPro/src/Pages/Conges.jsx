@@ -256,7 +256,124 @@ const ModalValidation = ({ conge, onClose, onSaved }) => {
     </div>
   );
 };
+/* ─── Modal Show ─── */
+const ModalShow = ({ conge, onClose }) => (
+  <div style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.45)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+    <div style={{ background:"#fff", borderRadius:16, padding:28, width:440, boxShadow:"0 20px 60px rgba(0,0,0,0.18)" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+        <div style={{ fontSize:16, fontWeight:700, color:"#1e293b" }}>Détail du congé</div>
+        <button onClick={onClose} style={{ background:"#f1f5f9", border:"none", borderRadius:8, width:30, height:30, fontSize:16, cursor:"pointer", color:"#64748b" }}>×</button>
+      </div>
+      <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+        {[
+          { label:"Employé",    value:`${conge.employee?.nom ?? ""} ${conge.employee?.prenom ?? ""}` },
+          { label:"Type",       value: TYPE_LABELS[conge.type_conge] ?? conge.type_conge },
+          { label:"Date début", value: fmt(conge.date_debut) },
+          { label:"Date fin",   value: fmt(conge.date_fin) },
+          { label:"Durée",      value:`${daysBetween(conge.date_debut, conge.date_fin)} jour(s)` },
+          { label:"Statut",     value: <Badge statut={conge.statut} /> },
+          { label:"Motif",      value: conge.motif ?? "—" },
+          { label:"Commentaire",value: conge.commentaire ?? "—" },
+        ].map(({ label, value }) => (
+          <div key={label} style={{ display:"flex", justifyContent:"space-between", padding:"8px 12px", background:"#f8fafc", borderRadius:8 }}>
+            <span style={{ fontSize:12, color:"#94a3b8", fontWeight:500 }}>{label}</span>
+            <span style={{ fontSize:13, color:"#1e293b", fontWeight:600 }}>{value}</span>
+          </div>
+        ))}
+      </div>
+      <button onClick={onClose} style={{ marginTop:20, width:"100%", padding:"9px 0", borderRadius:8, border:"0.5px solid rgba(0,0,0,0.15)", background:"#fff", fontSize:13, cursor:"pointer", color:"#64748b" }}>
+        Fermer
+      </button>
+    </div>
+  </div>
+);
+/* ─── Modal Modifier ─── */
+const ModalModifier = ({ conge, employees, user, onClose, onSaved }) => {
+  const isAdmin = user?.role === "admin";
+  const [form, setForm] = useState({
+    type_conge:  conge.type_conge,
+    date_debut:  conge.date_debut?.slice(0,10) ?? "",
+    date_fin:    conge.date_fin?.slice(0,10) ?? "",
+    motif:       conge.motif ?? "",
+    employee_id: conge.employee_id ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr]       = useState("");
 
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const submit = async () => {
+    if (!form.date_debut || !form.date_fin) { setErr("Dates obligatoires."); return; }
+    setSaving(true); setErr("");
+    try {
+      await api.put(`/conges/${conge.id}`, form);
+      onSaved();
+    } catch (e) {
+      setErr(e.response?.data?.message ?? "Erreur lors de la modification.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inp = {
+    width:"100%", padding:"9px 12px", borderRadius:8,
+    border:"0.5px solid rgba(0,0,0,0.15)", fontSize:13,
+    outline:"none", boxSizing:"border-box", background:"#fff", fontFamily:"inherit",
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.45)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ background:"#fff", borderRadius:16, padding:28, width:460, boxShadow:"0 20px 60px rgba(0,0,0,0.18)" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:22 }}>
+          <div style={{ fontSize:16, fontWeight:700, color:"#1e293b" }}>Modifier la demande</div>
+          <button onClick={onClose} style={{ background:"#f1f5f9", border:"none", borderRadius:8, width:30, height:30, fontSize:16, cursor:"pointer", color:"#64748b" }}>×</button>
+        </div>
+
+        {err && <div style={{ background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"9px 14px", fontSize:13, marginBottom:14 }}>{err}</div>}
+
+        <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+          {isAdmin && (
+            <div>
+              <label style={{ fontSize:12, fontWeight:500, color:"#374151", display:"block", marginBottom:5 }}>Employé *</label>
+              <select value={form.employee_id} onChange={e => set("employee_id", e.target.value)} style={inp}>
+                {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.nom} {emp.prenom}</option>)}
+              </select>
+            </div>
+          )}
+          <div>
+            <label style={{ fontSize:12, fontWeight:500, color:"#374151", display:"block", marginBottom:5 }}>Type de congé *</label>
+            <select value={form.type_conge} onChange={e => set("type_conge", e.target.value)} style={inp}>
+              {Object.entries(TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+            <div>
+              <label style={{ fontSize:12, fontWeight:500, color:"#374151", display:"block", marginBottom:5 }}>Date début *</label>
+              <input type="date" value={form.date_debut} onChange={e => set("date_debut", e.target.value)} style={inp} />
+            </div>
+            <div>
+              <label style={{ fontSize:12, fontWeight:500, color:"#374151", display:"block", marginBottom:5 }}>Date fin *</label>
+              <input type="date" value={form.date_fin} min={form.date_debut} onChange={e => set("date_fin", e.target.value)} style={inp} />
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize:12, fontWeight:500, color:"#374151", display:"block", marginBottom:5 }}>Motif</label>
+            <textarea value={form.motif} onChange={e => set("motif", e.target.value)} rows={3} style={{ ...inp, resize:"vertical" }} />
+          </div>
+        </div>
+
+        <div style={{ display:"flex", gap:10, marginTop:22 }}>
+          <button onClick={onClose} style={{ flex:1, padding:"9px 0", borderRadius:8, border:"0.5px solid rgba(0,0,0,0.15)", background:"#fff", fontSize:13, cursor:"pointer", color:"#64748b", fontFamily:"inherit" }}>
+            Annuler
+          </button>
+          <button onClick={submit} disabled={saving} style={{ flex:2, padding:"9px 0", borderRadius:8, border:"none", background: saving ? "#93c5fd" : "#3b82f6", color:"#fff", fontSize:13, fontWeight:600, cursor: saving ? "not-allowed" : "pointer", fontFamily:"inherit" }}>
+            {saving ? "Enregistrement..." : "Enregistrer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 /* ─── PAGE PRINCIPALE ─── */
 const Conges = () => {
   const [user, setUser]         = useState(null);
@@ -264,11 +381,21 @@ const Conges = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [showDemande, setShowDemande] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [showing, setShowing] = useState(null);
   const [validating, setValidating]   = useState(null);
   const [filter, setFilter]     = useState("tous");
 
   const isAdmin = user?.role === "admin";
-
+const deleteConge = async (id) => {
+  if (!window.confirm("Confirmer la suppression de cette demande ?")) return;
+  try {
+    await api.delete(`/conges/${id}`);
+    load();
+  } catch (e) {
+    alert(e.response?.data?.message ?? "Erreur lors de la suppression.");
+  }
+};
   const load = () => {
     setLoading(true);
     api.get("/conges")
@@ -315,6 +442,18 @@ const Conges = () => {
           onSaved={() => { setShowDemande(false); load(); }}
         />
       )}
+      {showing && (
+  <ModalShow conge={showing} onClose={() => setShowing(null)} />
+)}
+{editing && (
+  <ModalModifier
+    conge={editing}
+    employees={employees}
+    user={user}
+    onClose={() => setEditing(null)}
+    onSaved={() => { setEditing(null); load(); }}
+  />
+)}
       {validating && (
         <ModalValidation
           conge={validating}
@@ -495,27 +634,40 @@ const Conges = () => {
                       </div>
                     )}
                   </td>
-
                   {isAdmin && (
-                    <td style={TD}>
-                      {c.statut === "en_attente" ? (
-                        <button
-                          onClick={() => setValidating(c)}
-                          style={{
-                            padding:"5px 12px",
-                            background:"#1e3a5f", color:"#fff",
-                            border:"none", borderRadius:7,
-                            fontSize:12, fontWeight:500, cursor:"pointer",
-                            fontFamily:"inherit",
-                          }}
-                        >
-                          Valider
-                        </button>
-                      ) : (
-                        <span style={{ fontSize:12, color:"#cbd5e1" }}>—</span>
-                      )}
-                    </td>
-                  )}
+  <td style={TD}>
+    <div style={{ display:"flex", gap:6 }}>
+      <button
+        onClick={() => setShowing(c)}
+        style={{ padding:"5px 12px", background:"#f0f4ff", color:"#3b82f6", border:"none", borderRadius:7, fontSize:12, fontWeight:500, cursor:"pointer", fontFamily:"inherit" }}
+      >
+        👁 Voir
+      </button>
+      {c.statut === "en_attente" && (
+        <>
+          <button
+            onClick={() => setValidating(c)}
+            style={{ padding:"5px 12px", background:"#1e3a5f", color:"#fff", border:"none", borderRadius:7, fontSize:12, fontWeight:500, cursor:"pointer", fontFamily:"inherit" }}
+          >
+            Valider
+          </button>
+          <button
+            onClick={() => setEditing(c)}
+            style={{ padding:"5px 12px", background:"#fef9c3", color:"#ca8a04", border:"none", borderRadius:7, fontSize:12, fontWeight:500, cursor:"pointer", fontFamily:"inherit" }}
+          >
+            ✏️ Modifier
+          </button>
+          <button
+            onClick={() => deleteConge(c.id)}
+            style={{ padding:"5px 12px", background:"#fee2e2", color:"#ef4444", border:"none", borderRadius:7, fontSize:12, fontWeight:500, cursor:"pointer", fontFamily:"inherit" }}
+          >
+            🗑 Supprimer
+          </button>
+        </>
+      )}
+    </div>
+  </td>
+)}
                 </tr>
               ))}
             </tbody>
