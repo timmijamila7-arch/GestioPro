@@ -24,7 +24,6 @@ class Projet extends Model
         'budget'     => 'decimal:2',
     ];
 
-    // Relations
     public function affectations()
     {
         return $this->hasMany(Affectation::class);

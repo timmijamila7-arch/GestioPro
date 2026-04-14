@@ -20,13 +20,12 @@ class AuthController extends Controller
         ]);
 
         $user = User::where('email', $request->email)->first();
-
+        
         if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['Email ou mot de passe incorrect.'],
             ]);
         }
-
         $user->tokens()->delete();
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -41,7 +40,7 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $request->user()->tokens()->delete();
 
         return response()->json([
             'message' => 'Déconnexion réussie',

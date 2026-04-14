@@ -13,13 +13,14 @@ class CongeController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role === 'admin' ) {
+        if ($user->role === 'admin') {
             $conges = Conge::with('employee')
                            ->orderBy('date_debut', 'desc')
                            ->get();
         } else {
+            // ✅ FIX: khdm $user->employee?->id bedel $user->employee_id
             $conges = Conge::with('employee')
-                           ->where('employee_id', $user->employee_id)
+                           ->where('employee_id', $user->employee?->id)
                            ->orderBy('date_debut', 'desc')
                            ->get();
         }
@@ -32,8 +33,13 @@ class CongeController extends Controller
 
     public function store(Request $request)
     {
+        $user = Auth::user();
+
         $request->validate([
-            'employee_id' => 'required|exists:employees,id',
+            // ✅ FIX: employee_id — admin yrslu, employee normal ykhdu auto
+            'employee_id' => $user->role === 'admin'
+                           ? 'required|exists:employees,id'
+                           : 'prohibited',
             'type_conge'  => 'required|string|max:255',
             'date_debut'  => 'required|date',
             'date_fin'    => 'required|date|after_or_equal:date_debut',
@@ -44,6 +50,17 @@ class CongeController extends Controller
 
         $data = $request->all();
         $data['statut'] = $data['statut'] ?? 'en_attente';
+
+        // ✅ FIX: Employee normal — auto-assign dyalo, bhal AbsenceController
+        if ($user->role !== 'admin') {
+            if (!$user->employee) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucun employé associé à ce compte.'
+                ], 422);
+            }
+            $data['employee_id'] = $user->employee->id;
+        }
 
         $conge = Conge::create($data);
 
@@ -166,19 +183,20 @@ class CongeController extends Controller
         ], 200);
     }
 
+    // ✅ FIX: abort(403) bedel abort(response()->json(...)) — Laravel abort() ma kayqbalch objects
     private function autoriser(Conge $conge)
     {
         $user = Auth::user();
 
-        if ($user->role === 'admin' || $user->role === 'rh') {
+        if ($user->role === 'admin') {
             return;
         }
 
-        if ($conge->employee_id !== $user->employee_id) {
-            abort(response()->json([
+        if ($conge->employee_id !== $user->employee?->id) {
+            return response()->json([
                 'success' => false,
                 'message' => 'Accès non autorisé.'
-            ], 403));
+            ], 403);
         }
     }
 }

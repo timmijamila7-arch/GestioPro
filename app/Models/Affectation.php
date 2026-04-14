@@ -22,7 +22,6 @@ class Affectation extends Model
         'date_fin'   => 'date',
     ];
 
-    // Relations
     public function employee()
     {
         return $this->belongsTo(Employee::class);

@@ -9,16 +9,22 @@ use Illuminate\Support\Facades\Auth;
 
 class ProjetController extends Controller
 {
-
     public function index()
     {
-        $projets = Projet::with('affectations.employee')
-                         ->orderBy('date_debut', 'desc')
-                         ->get();
+        $user = Auth::user();
+
+        $query = Projet::with('affectations.employee')
+            ->orderBy('date_debut', 'desc');
+
+        if ($user->role !== 'admin') {
+            $query->whereHas('affectations', function ($subQuery) use ($user) {
+                $subQuery->where('employee_id', $user->employee_id);
+            });
+        }
 
         return response()->json([
             'success' => true,
-            'data'    => $projets
+            'data' => $query->get(),
         ], 200);
     }
 
@@ -27,25 +33,25 @@ class ProjetController extends Controller
         if (Auth::user()->role !== 'admin') {
             return response()->json([
                 'success' => false,
-                'message' => 'Action non autorisée.'
+                'message' => 'Action non autorisee.',
             ], 403);
         }
 
         $request->validate([
-            'nom'         => 'required|string|max:255',
+            'nom' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'date_debut'  => 'required|date',
-            'date_fin'    => 'nullable|date|after_or_equal:date_debut',
-            'statut'      => 'required|in:en_cours,termine,suspendu,planifie',
-            'budget'      => 'nullable|numeric|min:0',
+            'date_debut' => 'required|date',
+            'date_fin' => 'nullable|date|after_or_equal:date_debut',
+            'statut' => 'required|in:en_cours,termine,suspendu',
+            'budget' => 'nullable|numeric|min:0',
         ]);
 
         $projet = Projet::create($request->all());
 
         return response()->json([
             'success' => true,
-            'message' => 'Projet créé avec succès.',
-            'data'    => $projet
+            'message' => 'Projet cree avec succes.',
+            'data' => $projet,
         ], 201);
     }
 
@@ -56,13 +62,20 @@ class ProjetController extends Controller
         if (!$projet) {
             return response()->json([
                 'success' => false,
-                'message' => 'Projet non trouvé.'
+                'message' => 'Projet non trouve.',
             ], 404);
+        }
+
+        if (Auth::user()->role !== 'admin' && !$projet->affectations->contains('employee_id', Auth::user()->employee_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Acces non autorise.',
+            ], 403);
         }
 
         return response()->json([
             'success' => true,
-            'data'    => $projet
+            'data' => $projet,
         ], 200);
     }
 
@@ -71,7 +84,7 @@ class ProjetController extends Controller
         if (Auth::user()->role !== 'admin') {
             return response()->json([
                 'success' => false,
-                'message' => 'Action non autorisée.'
+                'message' => 'Action non autorisee.',
             ], 403);
         }
 
@@ -80,25 +93,25 @@ class ProjetController extends Controller
         if (!$projet) {
             return response()->json([
                 'success' => false,
-                'message' => 'Projet non trouvé.'
+                'message' => 'Projet non trouve.',
             ], 404);
         }
 
         $request->validate([
-            'nom'         => 'required|string|max:255',
+            'nom' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'date_debut'  => 'required|date',
-            'date_fin'    => 'nullable|date|after_or_equal:date_debut',
-            'statut'      => 'required|in:en_cours,termine,suspendu,planifie',
-            'budget'      => 'nullable|numeric|min:0',
+            'date_debut' => 'required|date',
+            'date_fin' => 'nullable|date|after_or_equal:date_debut',
+            'statut' => 'required|in:en_cours,termine,suspendu',
+            'budget' => 'nullable|numeric|min:0',
         ]);
 
         $projet->update($request->all());
 
         return response()->json([
             'success' => true,
-            'message' => 'Projet modifié avec succès.',
-            'data'    => $projet
+            'message' => 'Projet modifie avec succes.',
+            'data' => $projet,
         ], 200);
     }
 
@@ -107,7 +120,7 @@ class ProjetController extends Controller
         if (Auth::user()->role !== 'admin') {
             return response()->json([
                 'success' => false,
-                'message' => 'Action non autorisée.'
+                'message' => 'Action non autorisee.',
             ], 403);
         }
 
@@ -116,7 +129,7 @@ class ProjetController extends Controller
         if (!$projet) {
             return response()->json([
                 'success' => false,
-                'message' => 'Projet non trouvé.'
+                'message' => 'Projet non trouve.',
             ], 404);
         }
 
@@ -124,7 +137,7 @@ class ProjetController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Projet supprimé avec succès.'
+            'message' => 'Projet supprime avec succes.',
         ], 200);
     }
 }

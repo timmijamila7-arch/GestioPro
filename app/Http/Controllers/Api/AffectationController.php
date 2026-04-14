@@ -18,8 +18,9 @@ class AffectationController extends Controller
                                        ->orderBy('date_debut', 'desc')
                                        ->get();
         } else {
+            // ✅ FIX: khdm $user->employee?->id
             $affectations = Affectation::with(['employee', 'projet'])
-                                       ->where('employee_id', $user->employee_id)
+                                       ->where('employee_id', $user->employee?->id)
                                        ->orderBy('date_debut', 'desc')
                                        ->get();
         }
@@ -67,7 +68,8 @@ class AffectationController extends Controller
             ], 404);
         }
 
-        $this->autoriser($affectation);
+        $check = $this->autoriser($affectation);
+        if ($check) return $check;
 
         return response()->json([
             'success' => true,
@@ -136,19 +138,23 @@ class AffectationController extends Controller
         ], 200);
     }
 
-    private function autoriser(Affectation $affectation)
+    // ✅ FIX: Return JsonResponse au lieu de abort(response()->json(...))
+    // + khdm $user->employee?->id bedel $user->employee_id
+    private function autoriser(Affectation $affectation): ?\Illuminate\Http\JsonResponse
     {
         $user = Auth::user();
 
-        if ($user->role === 'admin' ) {
-            return;
+        if ($user->role === 'admin') {
+            return null;
         }
 
-        if ($affectation->employee_id !== $user->employee_id) {
+        if ($affectation->employee_id !== $user->employee?->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Accès non autorisé.'
             ], 403);
         }
+
+        return null;
     }
 }

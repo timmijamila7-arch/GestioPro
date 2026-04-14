@@ -29,7 +29,6 @@ class Employee extends Model
         'date_embauche'  => 'date',
     ];
 
-    // Relations
     public function user()
     {
         return $this->belongsTo(User::class);
